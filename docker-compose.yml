@@ -1,0 +1,76 @@
+version: '3.7'
+
+services:
+  database:
+    container_name: database
+    image: mysql:latest
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: app
+      MYSQL_ROOT_PASSWORD: 'password'
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-authentication-plugin=mysql_native_password"]
+    networks:
+      - app
+    ports:
+      - "3306:3306"
+
+  backend:
+    container_name: backend
+    build:
+      context: .
+      dockerfile: ./backend/.docker/Dockerfile
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: php
+      SERVICE_TAGS: dev
+    volumes:
+      - ./backend:/var/www
+    working_dir: /var/www
+    command: ["/wait-for-it.sh", "database:3306", "--", "/build.sh"]
+    tty: true
+    networks:
+      - app
+    ports:
+      - "9000:9000"
+    depends_on:
+      - database
+
+  backend_proxy:
+    container_name: backend_proxy
+    build:
+      context: .
+      dockerfile: ./backend/.docker/Dockerfile.proxy
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www
+    command: ["/wait-for-it.sh", "backend:9000", "--", "nginx", "-g", "daemon off;"]
+    tty: true
+    networks:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+
+  frontend:
+    container_name: frontend
+    build:
+      context: .
+      dockerfile: ./frontend/.docker/Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    command: ["/wait-for-it.sh", "backend_proxy:80", "--", "/build.sh"]
+    tty: true
+    networks:
+      - app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend_proxy
+
+networks:
+  app:
+    driver: bridge
