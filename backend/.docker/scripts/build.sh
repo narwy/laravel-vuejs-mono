@@ -10,10 +10,10 @@ echo "Laravel: Generating encryption key"
 php artisan key:generate
 
 echo "Laravel: Running migrations and seeder"
-php /var/www/artisan migrate:fresh --seed --force
+php artisan migrate:fresh --seed --force
 
 echo "Laravel: Running queue worker"
-php /var/www/artisan queue:work &
+php artisan queue:work &
 
 echo "PHP: Starting PHP-FPM"
 php-fpm
